@@ -1,0 +1,10 @@
+---
+
+- hosts: zookeeper
+  sudo: yes
+  vars:
+    user: caleb
+
+  tasks:
+    - name: Update APT
+      apt: name=ntp state=present update_cache=yes
