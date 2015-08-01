@@ -10,17 +10,18 @@
 
     zk_version: zookeeper-3.4.6
     zk_url: http://www.motorlogy.com/apache/zookeeper/current/{{ zk_version }}.tar.gz
+    zk_data_dir: /var/lib/zookeeper
 
   tasks:
     - name: Check for NTP
       command: dpkg -l ntp
       register: ntp_installed
       ignore_errors: yes
-    
+
     - name: Update APT
       apt: name=ntp state=present update_cache=yes
       when: ntp_installed.rc != 0
-      
+
     - name: Install OS dependencies
       apt: name="{{ item }}" state=present
       with_items: packages
@@ -30,3 +31,26 @@
 
     - name: Unpack Zookeeper
       unarchive: src="/tmp/{{ zk_version }}.tar.gz" dest="/opt" copy=no
+
+    - name: Symlink Zookeeper directory
+      file: src="/opt/{{ zk_version }}" dest=/opt/zookeeper state=link mode=0755
+
+    - name: Select MyID from hostname
+      command: sed -E 's/zk(.)/\1/' /etc/hostname
+      register: id
+
+    - name: Install the Zookeeper config
+      template: src=roles/zookeeper/templates/zk_conf.j2 dest=/opt/zookeeper/conf/zoo.cfg mode=0664
+
+    - name: Make data directory
+      file: dest="{{ zk_data_dir }}" state=directory mode=0775
+
+    - name: Install the Zookeeper myid file
+      template: src=roles/zookeeper/templates/myid.j2 dest={{ zk_data_dir }}/myid mode=0664
+      with_items:
+        - "{{id.stdout}}"
+
+    - name: Start Zookeeper
+      command: /opt/zookeeper/bin/zkServer.sh start
+      async: 60
+      poll: 0

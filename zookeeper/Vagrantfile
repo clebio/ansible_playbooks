@@ -1,13 +1,12 @@
 # -*- mode: ruby -*-
-# vi: set ft=ruby :
 
 BOX = "trusty64"
 RAM = 2048
 
 HOSTS = {
-  "zk1" => "1",
   "zk2" => "2",
   "zk3" => "3",
+  "zk4" => "4",
 }
 
 DOMAIN = ".localhost"
@@ -16,21 +15,17 @@ NETMASK = "255.255.255.0"
 
 Vagrant.configure(2) do |config|
 
-  # config.vm.network "forwarded_port", guest: 80, host: 8080
-  # config.vm.network "private_network", ip: "192.168.33.10"
-  # config.vm.synced_folder "../data", "/vagrant_data"
-
-  HOSTS.each do | (name) |
+  HOSTS.each do | (name, idx) |
 
     config.vm.define name do |machine|
       machine.vm.box     = BOX
-      
+
       machine.vm.provider "virtualbox" do |vbox|
         vbox.memory = RAM
       end
 
-      #machine.vm.hostname = machine_name + DOMAIN
-      #machine.vm.network 'private_network', ip: name, netmask: NETMASK
+      machine.vm.hostname = name + DOMAIN
+      machine.vm.network 'private_network', ip: NETWORK + idx, netmask: NETMASK
     end
   end # HOSTS-each
 
@@ -38,6 +33,11 @@ Vagrant.configure(2) do |config|
     ansible.limit = 'all'
     ansible.groups = {
       "zookeeper" => ["zk1", "zk2", "zk3", ],
+    }
+
+    ansible.extra_vars = {
+      network: NETWORK,
+      cluster: HOSTS
     }
     ansible.playbook = "zookeeper.yml"
   end
