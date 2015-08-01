@@ -5,6 +5,28 @@
   vars:
     user: caleb
 
+    packages:
+      - openjdk-7-jdk
+
+    zk_version: zookeeper-3.4.6
+    zk_url: http://www.motorlogy.com/apache/zookeeper/current/{{ zk_version }}.tar.gz
+
   tasks:
+    - name: Check for NTP
+      command: dpkg -l ntp
+      register: ntp_installed
+      ignore_errors: yes
+    
     - name: Update APT
       apt: name=ntp state=present update_cache=yes
+      when: ntp_installed.rc != 0
+      
+    - name: Install OS dependencies
+      apt: name="{{ item }}" state=present
+      with_items: packages
+
+    - name: Download Zookeeper
+      get_url: url="{{ zk_url }}" dest="/tmp/{{ zk_version }}.tar.gz"
+
+    - name: Unpack Zookeeper
+      unarchive: src="/tmp/{{ zk_version }}.tar.gz" dest="/opt" copy=no
